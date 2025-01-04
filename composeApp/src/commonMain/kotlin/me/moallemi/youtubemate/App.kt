@@ -1,9 +1,13 @@
 package me.moallemi.youtubemate
 
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
-import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.Icons.Rounded
 import androidx.compose.material.icons.rounded.Settings
 import androidx.compose.material3.Button
 import androidx.compose.material3.ElevatedCard
@@ -15,6 +19,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.movableContentOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
@@ -22,6 +27,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
+import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
 import me.moallemi.youtubemate.compoentns.AddYouTubeChannelSection
 import me.moallemi.youtubemate.compoentns.ChannelSection
@@ -31,6 +37,9 @@ import me.moallemi.youtubemate.compoentns.YouTubeApiKeySection
 import me.moallemi.youtubemate.data.Result.Failure
 import me.moallemi.youtubemate.di.DependencyContainer
 import me.moallemi.youtubemate.di.DependencyProvider
+import me.moallemi.youtubemate.model.Channel
+import me.moallemi.youtubemate.model.Comment
+import me.moallemi.youtubemate.model.CommentAuthor
 import me.moallemi.youtubemate.model.Video
 import me.moallemi.youtubemate.model.YouTubeCredential
 import me.moallemi.youtubemate.ui.theme.AppTheme
@@ -96,103 +105,189 @@ fun App() {
     }
 
     if (youtubeApiKey != null && channel != null) {
-      val coroutineScope = rememberCoroutineScope()
+      MainContent(
+        channel = channel,
+        dependencyContainer = dependencyContainer,
+        videos = videos,
+        comments = comments,
+        commentsByAuthor = commentsByAuthor,
+        topComments = topComments,
+      )
+    }
+  }
+}
+
+@Composable
+private fun MainContent(
+  channel: Channel?,
+  dependencyContainer: DependencyContainer,
+  videos: List<Video>?,
+  comments: List<Comment>?,
+  commentsByAuthor: Map<CommentAuthor, List<Comment>>?,
+  topComments: List<Comment>?,
+) {
+  val coroutineScope = rememberCoroutineScope()
+  Column {
+    MainHeaderSection(
+      channel = channel,
+      coroutineScope = coroutineScope,
+      dependencyContainer = dependencyContainer,
+    )
+
+    MainBodySection(
+      videos = videos,
+      dependencyContainer = dependencyContainer,
+      channel = channel,
+      comments = comments,
+      commentsByAuthor = commentsByAuthor,
+      topComments = topComments,
+    )
+  }
+}
+
+@Composable
+private fun MainBodySection(
+  videos: List<Video>?,
+  dependencyContainer: DependencyContainer,
+  channel: Channel?,
+  comments: List<Comment>?,
+  commentsByAuthor: Map<CommentAuthor, List<Comment>>?,
+  topComments: List<Comment>?,
+) {
+  var isLoading by remember { mutableStateOf(false) }
+
+  LaunchedEffect(Unit) {
+    val cachedVideos: List<Video>
+    if (videos?.isEmpty() == true) {
+      isLoading = true
+      val videoResult = dependencyContainer.dataRepository.allVideos(channel!!.id)
+      isLoading = false
+      if (videoResult is Failure) {
+        // Handle error
+      }
+      cachedVideos = videoResult.successValue()!!
+    } else {
+      cachedVideos = videos ?: emptyList()
+    }
+
+    if (comments?.isEmpty() == true) {
+      isLoading = true
+      val commentsResult = dependencyContainer.dataRepository.allComments(cachedVideos.map { it.id })
+      if (commentsResult is Failure) {
+        // Handle error
+      }
+      dependencyContainer.dataRepository.allComments(cachedVideos.map { it.id })
+    }
+    isLoading = false
+  }
+  Row {
+    ElevatedCard(
+      modifier = Modifier
+        .padding(vertical = 16.dp)
+        .padding(start = 16.dp, end = 8.dp)
+        .weight(0.3f),
+    ) {
       Column {
-        Row(
+        Text(
+          text = "Top Commenters",
+          style = MaterialTheme.typography.titleMedium,
+          modifier = Modifier.padding(16.dp),
+        )
+        TopCommentersSection(
+          topCommentAuthors = commentsByAuthor ?: emptyMap(),
+          isLoading = comments == null || isLoading,
+        )
+      }
+    }
+
+    ElevatedCard(
+      modifier = Modifier
+        .padding(vertical = 16.dp)
+        .padding(start = 8.dp, end = 16.dp)
+        .weight(0.7f),
+    ) {
+      Column {
+        Text(
+          text = "Top Comments",
+          style = MaterialTheme.typography.titleMedium,
+          modifier = Modifier.padding(16.dp),
+        )
+        CommentsSection(
+          items = topComments ?: emptyList(),
+          isLoading = topComments == null || isLoading,
+        )
+      }
+    }
+  }
+}
+
+@Composable
+private fun MainHeaderSection(
+  channel: Channel?,
+  coroutineScope: CoroutineScope,
+  dependencyContainer: DependencyContainer,
+) {
+  val channelSection = remember {
+    movableContentOf {
+      ChannelSection(
+        modifier = Modifier,
+        channel = channel!!,
+      )
+    }
+  }
+  val settingsSection = remember {
+    movableContentOf {
+      Button(
+        onClick = {
+          // TODO: Add navigation instead of manual deletion
+          coroutineScope.launch {
+            dependencyContainer.dataRepository.deleteChannel(channel!!.id)
+            dependencyContainer.dataRepository.deleteAllVideos()
+            dependencyContainer.dataRepository.deleteAllComments()
+          }
+        },
+      ) {
+        Icon(
+          modifier = Modifier.padding(end = 8.dp),
+          imageVector = Rounded.Settings,
+          contentDescription = "Refresh",
+        )
+        Text(text = "Change Channel")
+      }
+    }
+  }
+
+  BoxWithConstraints {
+    if (maxWidth < 840.dp) {
+      Column(
+        modifier = Modifier
+          .padding(top = 16.dp)
+          .padding(horizontal = 16.dp),
+        verticalArrangement = Arrangement.spacedBy(16.dp),
+      ) {
+        channelSection()
+        Box(
           modifier = Modifier
-            .padding(top = 16.dp)
-            .padding(horizontal = 16.dp),
-          verticalAlignment = Alignment.CenterVertically,
+            .fillMaxWidth(),
+          contentAlignment = Alignment.CenterEnd,
         ) {
-          ChannelSection(
-            modifier = Modifier
-              .weight(1f),
-            channel = channel!!,
-          )
-
-          Button(
-            onClick = {
-              // TODO: Add navigation instead of manual deletion
-              coroutineScope.launch {
-                dependencyContainer.dataRepository.deleteChannel(channel!!.id)
-                dependencyContainer.dataRepository.deleteAllVideos()
-                dependencyContainer.dataRepository.deleteAllComments()
-              }
-            },
-          ) {
-            Icon(
-              modifier = Modifier.padding(end = 8.dp),
-              imageVector = Icons.Rounded.Settings,
-              contentDescription = "Refresh",
-            )
-            Text(text = "Change Channel")
-          }
+          settingsSection()
         }
-
-        var isLoading by remember { mutableStateOf(false) }
-
-        LaunchedEffect(Unit) {
-          val cachedVideos: List<Video>
-          if (videos?.isEmpty() == true) {
-            isLoading = true
-            val videoResult = dependencyContainer.dataRepository.allVideos(channel!!.id)
-            isLoading = false
-            if (videoResult is Failure) {
-              // Handle error
-            }
-            cachedVideos = videoResult.successValue()!!
-          } else {
-            cachedVideos = videos ?: emptyList()
-          }
-
-          if (comments?.isEmpty() == true) {
-            isLoading = true
-            val commentsResult = dependencyContainer.dataRepository.allComments(cachedVideos.map { it.id })
-            if (commentsResult is Failure) {
-              // Handle error
-            }
-            dependencyContainer.dataRepository.allComments(cachedVideos.map { it.id })
-          }
-          isLoading = false
+      }
+    } else {
+      Row(
+        modifier = Modifier
+          .padding(top = 16.dp)
+          .padding(horizontal = 16.dp),
+        verticalAlignment = Alignment.CenterVertically,
+      ) {
+        Box(
+          modifier = Modifier.weight(1f),
+        ) {
+          channelSection()
         }
-        Row {
-          ElevatedCard(
-            modifier = Modifier
-              .padding(vertical = 16.dp)
-              .padding(start = 16.dp, end = 8.dp)
-              .weight(0.3f),
-          ) {
-            Column {
-              Text(
-                text = "Top Commenters",
-                style = MaterialTheme.typography.titleMedium,
-                modifier = Modifier.padding(16.dp),
-              )
-              TopCommentersSection(
-                topCommentAuthors = commentsByAuthor ?: emptyMap(),
-                isLoading = comments == null || isLoading,
-              )
-            }
-          }
-
-          ElevatedCard(
-            modifier = Modifier
-              .padding(vertical = 16.dp)
-              .padding(start = 8.dp, end = 16.dp)
-              .weight(0.7f),
-          ) {
-            Column {
-              Text(
-                text = "Top Comments",
-                style = MaterialTheme.typography.titleMedium,
-                modifier = Modifier.padding(16.dp),
-              )
-              CommentsSection(
-                items = topComments ?: emptyList(),
-                isLoading = topComments == null || isLoading,
-              )
-            }
-          }
+        Box {
+          settingsSection()
         }
       }
     }
