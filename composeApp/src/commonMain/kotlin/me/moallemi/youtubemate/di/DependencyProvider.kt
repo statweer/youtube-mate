@@ -1,7 +1,6 @@
 package me.moallemi.youtubemate.di
 
 import androidx.datastore.core.DataStore
-import androidx.datastore.preferences.core.PreferenceDataStoreFactory
 import androidx.datastore.preferences.core.Preferences
 import com.google.api.client.googleapis.javanet.GoogleNetHttpTransport
 import com.google.api.client.json.gson.GsonFactory
@@ -27,15 +26,14 @@ import kotlinx.serialization.encoding.Encoder
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.modules.SerializersModule
 import kotlinx.serialization.modules.contextual
-import okio.Path.Companion.toPath
 import java.math.BigInteger
 
 class DependencyProvider {
   fun providesDataStore(): DataStore<Preferences> =
-    PreferenceDataStoreFactory.createWithPath(
+    dataStorePreferences(
       corruptionHandler = null,
+      coroutineScope = CoroutineScope(Dispatchers.IO + SupervisorJob()),
       migrations = emptyList(),
-      produceFile = { DATASTORE_FILE_NAME.toPath() },
     )
 
   fun providesYouTube(): YouTube =
@@ -82,7 +80,6 @@ class DependencyProvider {
     }
 
   companion object {
-    private const val DATASTORE_FILE_NAME = "youtubemate.preferences_pb"
     private const val APPLICATION_NAME = "YoutubeMate"
   }
 }
