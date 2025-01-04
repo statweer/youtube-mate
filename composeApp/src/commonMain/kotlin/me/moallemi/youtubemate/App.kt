@@ -13,6 +13,8 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.ElevatedCard
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Tab
+import androidx.compose.material3.TabRow
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -127,7 +129,9 @@ private fun MainContent(
   topComments: List<Comment>?,
 ) {
   val coroutineScope = rememberCoroutineScope()
-  Column {
+  Column(
+    verticalArrangement = Arrangement.spacedBy(16.dp),
+  ) {
     MainHeaderSection(
       channel = channel,
       coroutineScope = coroutineScope,
@@ -180,42 +184,91 @@ private fun MainBodySection(
     }
     isLoading = false
   }
-  Row {
-    ElevatedCard(
-      modifier = Modifier
-        .padding(vertical = 16.dp)
-        .padding(start = 16.dp, end = 8.dp)
-        .weight(0.3f),
-    ) {
-      Column {
-        Text(
-          text = "Top Commenters",
-          style = MaterialTheme.typography.titleMedium,
-          modifier = Modifier.padding(16.dp),
-        )
+  val topCommentersSection = remember {
+    movableContentOf {
+      ElevatedCard(
+        modifier = Modifier
+          .padding(vertical = 16.dp)
+          .padding(start = 16.dp, end = 8.dp),
+      ) {
         TopCommentersSection(
           topCommentAuthors = commentsByAuthor ?: emptyMap(),
           isLoading = comments == null || isLoading,
         )
       }
     }
+  }
 
-    ElevatedCard(
-      modifier = Modifier
-        .padding(vertical = 16.dp)
-        .padding(start = 8.dp, end = 16.dp)
-        .weight(0.7f),
-    ) {
-      Column {
-        Text(
-          text = "Top Comments",
-          style = MaterialTheme.typography.titleMedium,
-          modifier = Modifier.padding(16.dp),
-        )
+  val topCommentsSection = remember {
+    movableContentOf {
+      ElevatedCard(
+        modifier = Modifier
+          .padding(vertical = 16.dp)
+          .padding(start = 8.dp, end = 16.dp),
+      ) {
         CommentsSection(
           items = topComments ?: emptyList(),
           isLoading = topComments == null || isLoading,
         )
+      }
+    }
+  }
+  BoxWithConstraints {
+    if (maxWidth < 840.dp) {
+      Column(
+        modifier = Modifier,
+      ) {
+        var selectedTabIndex by remember { mutableStateOf(0) }
+        TabRow(
+          modifier = Modifier.fillMaxWidth(),
+          selectedTabIndex = selectedTabIndex,
+          tabs = {
+            Tab(
+              text = { Text("Top Commenters") },
+              selected = selectedTabIndex == 0,
+              onClick = { selectedTabIndex = 0 },
+            )
+            Tab(
+              text = { Text("Top Comments") },
+              selected = selectedTabIndex == 1,
+              onClick = { selectedTabIndex = 1 },
+            )
+          },
+        )
+        when (selectedTabIndex) {
+          0 -> topCommentersSection()
+          1 -> topCommentsSection()
+        }
+      }
+    } else {
+      Row(
+        modifier = Modifier
+          .padding(top = 16.dp)
+          .padding(horizontal = 16.dp),
+        verticalAlignment = Alignment.CenterVertically,
+      ) {
+        Column(
+          modifier = Modifier.weight(0.35f),
+        ) {
+          Text(
+            text = "Top Commenters",
+            style = MaterialTheme.typography.titleMedium,
+            modifier = Modifier
+              .padding(horizontal = 16.dp),
+          )
+          topCommentersSection()
+        }
+        Column(
+          modifier = Modifier.weight(0.65f),
+        ) {
+          Text(
+            text = "Top Comments",
+            style = MaterialTheme.typography.titleMedium,
+            modifier = Modifier
+              .padding(horizontal = 16.dp),
+          )
+          topCommentsSection()
+        }
       }
     }
   }
