@@ -184,7 +184,7 @@ private fun MainBodySection(
     }
     isLoading = false
   }
-  val topCommentersSection = remember {
+  val topCommentersSection = remember(commentsByAuthor, isLoading) {
     movableContentOf {
       ElevatedCard(
         modifier = Modifier
@@ -199,7 +199,7 @@ private fun MainBodySection(
     }
   }
 
-  val topCommentsSection = remember {
+  val topCommentsSection = remember(topComments, isLoading) {
     movableContentOf {
       ElevatedCard(
         modifier = Modifier
@@ -280,7 +280,7 @@ private fun MainHeaderSection(
   coroutineScope: CoroutineScope,
   dependencyContainer: DependencyContainer,
 ) {
-  val channelSection = remember {
+  val channelSection = remember(channel) {
     movableContentOf {
       ChannelSection(
         modifier = Modifier,
