@@ -67,7 +67,7 @@ android {
   compileSdk = libs.versions.android.compileSdk.get().toInt()
 
   defaultConfig {
-    applicationId = "me.moallemi.youtubemate"
+    applicationId = "com.statweer.youtubemate"
     minSdk = libs.versions.android.minSdk.get().toInt()
     targetSdk = libs.versions.android.targetSdk.get().toInt()
     versionCode = 1
@@ -101,7 +101,7 @@ compose.desktop {
 
     nativeDistributions {
       targetFormats(TargetFormat.Dmg, TargetFormat.Msi, TargetFormat.Deb)
-      packageName = "me.moallemi.youtubemate"
+      packageName = "com.statweer.youtubemate"
       packageVersion = "1.0.0"
     }
   }
