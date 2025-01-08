@@ -70,7 +70,7 @@ android {
     applicationId = "com.statweer.youtubemate"
     minSdk = libs.versions.android.minSdk.get().toInt()
     targetSdk = libs.versions.android.targetSdk.get().toInt()
-    versionCode = 1
+    versionCode = 25010801
     versionName = "1.0"
   }
   packaging {
