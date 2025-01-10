@@ -118,4 +118,10 @@ class DataRepositoryImpl(
       localStore.deleteAllComments()
     }
   }
+
+  override suspend fun clearEverything() {
+    withContext(dispatcher.io()) {
+      localStore.clearEverything()
+    }
+  }
 }

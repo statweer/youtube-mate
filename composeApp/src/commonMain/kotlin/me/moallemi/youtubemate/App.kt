@@ -294,9 +294,7 @@ private fun MainHeaderSection(
         onClick = {
           // TODO: Add navigation instead of manual deletion
           coroutineScope.launch {
-            dependencyContainer.dataRepository.deleteChannel(channel!!.id)
-            dependencyContainer.dataRepository.deleteAllVideos()
-            dependencyContainer.dataRepository.deleteAllComments()
+            dependencyContainer.dataRepository.clearEverything()
           }
         },
       ) {

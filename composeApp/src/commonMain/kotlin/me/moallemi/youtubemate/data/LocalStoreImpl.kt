@@ -91,4 +91,10 @@ class LocalStoreImpl(
       preferences.remove(youtubeCommentsPref)
     }
   }
+
+  override suspend fun clearEverything() {
+    dataStore.edit { preferences ->
+      preferences.clear()
+    }
+  }
 }

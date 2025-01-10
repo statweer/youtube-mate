@@ -30,4 +30,6 @@ interface DataRepository {
   suspend fun latestComments(count: Int, videoIds: List<String>): Result<List<Comment>, GeneralError>
 
   suspend fun deleteAllComments()
+
+  suspend fun clearEverything()
 }

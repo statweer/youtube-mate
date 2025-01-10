@@ -28,4 +28,6 @@ interface LocalStore {
   fun observeComments(): Flow<List<Comment>>
 
   suspend fun deleteAllComments()
+
+  suspend fun clearEverything()
 }
