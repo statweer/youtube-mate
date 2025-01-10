@@ -16,7 +16,19 @@ interface YouTubeRemoteSource {
     youTubeCredential: YouTubeCredential,
   ): Result<List<Video>, GeneralError>
 
+  suspend fun latestVideos(
+    count: Int,
+    channelId: String,
+    youTubeCredential: YouTubeCredential,
+  ): Result<List<Video>, GeneralError>
+
   suspend fun allComments(
+    videoIds: List<String>,
+    youTubeCredential: YouTubeCredential,
+  ): Result<List<Comment>, GeneralError>
+
+  suspend fun latestComments(
+    count: Int,
     videoIds: List<String>,
     youTubeCredential: YouTubeCredential,
   ): Result<List<Comment>, GeneralError>

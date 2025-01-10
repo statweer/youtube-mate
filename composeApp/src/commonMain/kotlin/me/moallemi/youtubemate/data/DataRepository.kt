@@ -20,12 +20,14 @@ interface DataRepository {
   fun observeVideos(): Flow<List<Video>>
 
   suspend fun allVideos(channelId: String): Result<List<Video>, GeneralError>
+  suspend fun latestVideos(count: Int, channelId: String): Result<List<Video>, GeneralError>
 
   suspend fun deleteAllVideos()
 
   fun observeComments(): Flow<List<Comment>>
 
   suspend fun allComments(videoIds: List<String>): Result<List<Comment>, GeneralError>
+  suspend fun latestComments(count: Int, videoIds: List<String>): Result<List<Comment>, GeneralError>
 
   suspend fun deleteAllComments()
 }

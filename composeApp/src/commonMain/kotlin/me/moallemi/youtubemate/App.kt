@@ -164,7 +164,7 @@ private fun MainBodySection(
     val cachedVideos: List<Video>
     if (videos?.isEmpty() == true) {
       isLoading = true
-      val videoResult = dependencyContainer.dataRepository.allVideos(channel!!.id)
+      val videoResult = dependencyContainer.dataRepository.latestVideos(20, channel!!.id)
       isLoading = false
       if (videoResult is Failure) {
         // Handle error
@@ -176,7 +176,7 @@ private fun MainBodySection(
 
     if (comments?.isEmpty() == true) {
       isLoading = true
-      val commentsResult = dependencyContainer.dataRepository.allComments(cachedVideos.map { it.id })
+      val commentsResult = dependencyContainer.dataRepository.latestComments(50, cachedVideos.map { it.id })
       if (commentsResult is Failure) {
         // Handle error
       }
@@ -229,7 +229,7 @@ private fun MainBodySection(
               onClick = { selectedTabIndex = 0 },
             )
             Tab(
-              text = { Text("Top Comments") },
+              text = { Text("Latest Comments") },
               selected = selectedTabIndex == 1,
               onClick = { selectedTabIndex = 1 },
             )

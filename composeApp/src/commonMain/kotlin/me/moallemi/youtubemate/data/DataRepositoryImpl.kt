@@ -62,6 +62,21 @@ class DataRepositoryImpl(
       result
     }
 
+  override suspend fun latestVideos(
+    count: Int,
+    channelId: String
+  ): Result<List<Video>, GeneralError> =
+    withContext(dispatcher.io()) {
+      val youTubeCredential = localStore.observeYouTubeCredential().first()
+        ?: return@withContext Result.Failure(GeneralError.AppError("No YouTube Credential"))
+
+      val result = youTubeRemoteSource.latestVideos(count, channelId, youTubeCredential)
+      if (result is Success) {
+        localStore.storeVideos(result.data)
+      }
+      result
+    }
+
   override suspend fun deleteAllVideos() {
     withContext(dispatcher.io()) {
       localStore.deleteAllVideos()
@@ -77,6 +92,21 @@ class DataRepositoryImpl(
         ?: return@withContext Result.Failure(GeneralError.AppError("No YouTube Credential"))
 
       val result = youTubeRemoteSource.allComments(videoIds, youTubeCredential)
+      if (result is Success) {
+        localStore.storeComments(result.data)
+      }
+      result
+    }
+
+  override suspend fun latestComments(
+    count: Int,
+    videoIds: List<String>
+  ): Result<List<Comment>, GeneralError> =
+    withContext(dispatcher.io()) {
+      val youTubeCredential = localStore.observeYouTubeCredential().first()
+        ?: return@withContext Result.Failure(GeneralError.AppError("No YouTube Credential"))
+
+      val result = youTubeRemoteSource.latestComments(count, videoIds, youTubeCredential)
       if (result is Success) {
         localStore.storeComments(result.data)
       }

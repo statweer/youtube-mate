@@ -1,6 +1,10 @@
 package me.moallemi.youtubemate.data
 
 import com.google.api.services.youtube.YouTube
+import kotlinx.coroutines.Deferred
+import kotlinx.coroutines.async
+import kotlinx.coroutines.awaitAll
+import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.suspendCancellableCoroutine
 import me.moallemi.youtubemate.model.Channel
 import me.moallemi.youtubemate.model.Comment
@@ -10,6 +14,8 @@ import me.moallemi.youtubemate.model.Video
 import me.moallemi.youtubemate.model.YouTubeCredential
 import kotlin.coroutines.resume
 import kotlin.coroutines.resumeWithException
+import kotlin.math.max
+import kotlin.math.min
 
 class YouTubeRemoteSourceImpl(
   private val youTube: YouTube,
@@ -27,17 +33,17 @@ class YouTubeRemoteSourceImpl(
             key = youTubeCredential.apiKey
           }
           .execute()?.items?.get(0)!!.let { youtubeChannel ->
-          Channel(
-            id = youtubeChannel.id,
-            title = youtubeChannel.snippet.title,
-            handle = youtubeChannel.snippet.customUrl,
-            thumbnail = youtubeChannel.snippet.thumbnails.medium.url,
-            stats = Stats(
-              videoCount = youtubeChannel.statistics.videoCount,
-              subscriberCount = youtubeChannel.statistics.subscriberCount,
-            ),
-          )
-        }
+            Channel(
+              id = youtubeChannel.id,
+              title = youtubeChannel.snippet.title,
+              handle = youtubeChannel.snippet.customUrl,
+              thumbnail = youtubeChannel.snippet.thumbnails.medium.url,
+              stats = Stats(
+                videoCount = youtubeChannel.statistics.videoCount,
+                subscriberCount = youtubeChannel.statistics.subscriberCount,
+              ),
+            )
+          }
         continuation.resume(Result.Success(channel))
       } catch (e: Exception) {
         continuation.resume(Result.Failure(GeneralError.ApiError(e.message, -1)))
@@ -47,6 +53,13 @@ class YouTubeRemoteSourceImpl(
   override suspend fun allVideos(
     channelId: String,
     youTubeCredential: YouTubeCredential,
+  ): Result<List<Video>, GeneralError> =
+    latestVideos(count = 50, channelId = channelId, youTubeCredential = youTubeCredential)
+
+  override suspend fun latestVideos(
+    count: Int,
+    channelId: String,
+    youTubeCredential: YouTubeCredential
   ): Result<List<Video>, GeneralError> =
     suspendCancellableCoroutine { continuation ->
       val request = youTube.channels().list(listOf("contentDetails"))
@@ -58,7 +71,7 @@ class YouTubeRemoteSourceImpl(
       // List playlist items
       val playlistItemsRequest = youTube.playlistItems().list(listOf("snippet"))
         .setPlaylistId(uploadPlaylistId)
-        .setMaxResults(50)
+        .setMaxResults(max(min(50, count.toLong()), 0))
         .setKey(youTubeCredential.apiKey)
 
       val videos = mutableListOf<Video>()
@@ -85,17 +98,49 @@ class YouTubeRemoteSourceImpl(
   override suspend fun allComments(
     videoIds: List<String>,
     youTubeCredential: YouTubeCredential,
+  ): Result<List<Comment>, GeneralError> =
+    latestComments(count = Int.MAX_VALUE, videoIds = videoIds, youTubeCredential = youTubeCredential)
+
+  override suspend fun latestComments(
+    count: Int,
+    videoIds: List<String>,
+    youTubeCredential: YouTubeCredential
   ): Result<List<Comment>, GeneralError> {
-    val comments = mutableListOf<Comment>()
-    videoIds.forEach { videoId ->
-      try {
-        val videoComments = fetchComments(videoId, youTubeCredential)
-        comments.addAll(videoComments)
-      } catch (e: Exception) {
-        e.printStackTrace()
+    return try {
+      val comments = mutableListOf<Comment>()
+      val videoIdIterator = videoIds.iterator()
+
+      coroutineScope {
+        val jobs = mutableListOf<Deferred<List<Comment>>>()
+
+        while (comments.size < count && videoIdIterator.hasNext()) {
+          val videoId = videoIdIterator.next()
+          val job = async {
+            try {
+              fetchComments(videoId, youTubeCredential)
+            } catch (e: Exception) {
+              e.printStackTrace()
+              emptyList() // Return an empty list if the request fails
+            }
+          }
+          jobs.add(job)
+        }
+
+        // Collect results from the active jobs
+        jobs.forEach { job ->
+          val result = job.await()
+          comments.addAll(result)
+          if (comments.size >= count) {
+            return@coroutineScope
+          }
+        }
       }
+
+      Result.Success(comments.take(count))
+    } catch (e: Exception) {
+      e.printStackTrace()
+      Result.Failure(GeneralError.ApiError(e.message, -1))
     }
-    return Result.Success(comments)
   }
 
   private suspend fun fetchComments(
@@ -103,7 +148,6 @@ class YouTubeRemoteSourceImpl(
     youTubeCredential: YouTubeCredential,
   ): List<Comment> =
     suspendCancellableCoroutine { continuation ->
-
       try {
         // Make a request to the commentThreads endpoint, filtering by your channel ID
         val request = youTube.commentThreads().list(listOf("snippet", "replies"))
