@@ -70,7 +70,7 @@ android {
     applicationId = "com.statweer.youtubemate"
     minSdk = libs.versions.android.minSdk.get().toInt()
     targetSdk = libs.versions.android.targetSdk.get().toInt()
-    versionCode = 25010801
+    versionCode = 25011002
     versionName = "1.0"
   }
   packaging {
@@ -87,6 +87,8 @@ android {
         getDefaultProguardFile("proguard-android-optimize.txt"),
         "proguard-rules.pro"
       )
+
+      ndk.debugSymbolLevel = "FULL"
     }
   }
   compileOptions {
